@@ -1,0 +1,11 @@
+A plugin for the Omeka platform (http://omeka.org/).
+A zoom widget that creates zoom-able tiles from a jpg and presents it in javascript zoom viewer.
+
+Install:
+To install copy OpenLayerZoom into your plugins directory and install it from the settings panel.
+Use:
+Edit an item with a jpg attached to it. On the left is a zoom tab. Check the box next to the image thumbnail and save changes. The image will now be presented as a zoomed image in the public item page.
+
+Edit .OpenLayerZoom/views/shared/common/theme/default/style.css. to change the size/appearance of the zoom viewer.
+Visit http://thisismattmiller.com/zoom for a  demo and more info.
+

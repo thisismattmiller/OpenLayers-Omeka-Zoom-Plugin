@@ -73,7 +73,7 @@ class ZoomifyFileProcessor  {
     var $_v_tileGroupMappings = array();
     var $qualitySetting ;
     var $tileSize ;
-    var $_debug ;
+    var $_debug = true;
     var $_filemode ;
     var $_dirmode ;
     var $_filegroup ;
@@ -185,17 +185,24 @@ class ZoomifyFileProcessor  {
 		
 		//echo "Something " . $this->_v_imageFilename;
 		
-        list($root, $root2, $ext) = explode(".",$this->_v_imageFilename);
+        //list($root, $root2, $ext) = explode(".",$this->_v_imageFilename);
+		
+		//$path_parts = pathinfo($this->_v_imageFilename);
+		
+		
+		
+		
 		
 		//echo "root = $root<br />";
 		//echo "root2 = $root2<br />";		
 		
 		//.com
-		$root = $root.'.'.$root2;
+		//$root = $root.'.'.$root2; 
 		
         if ( !$root) $root = $this->_v_imageFilename;
 		
-		//echo "root = $root<br />";
+
+
 				
         $ext = ".jpg";
         
@@ -349,10 +356,9 @@ class ZoomifyFileProcessor  {
         $row = 0;
         list($ul_y, $lr_y) = array(0,0);
 
-        list($root, $root2, $ext) = explode(".",$this->_v_imageFilename);
-		 
-		
-		$root = $root . '.' .$root2;		
+        //list($root, $root2, $ext) = explode(".",$this->_v_imageFilename);
+		 		
+		//$root = $root . '.' .$root2;		
 		
 		
 		
@@ -468,9 +474,12 @@ class ZoomifyFileProcessor  {
 		$root = $root.$root2;		 
 		
         $root = $root . "_zdata";
-    
+    	
+
 			
         $this->_v_saveToLocation = $directory."/".$root;
+		
+		
 
     #    If the paths already exist, an image is being re-processed, clean up for it.
         if (is_dir($this->_v_saveToLocation)) {
@@ -527,6 +536,7 @@ class ZoomifyFileProcessor  {
       $this->getImageMetadata();
       $this->processImage();
       $this->saveXMLOutput();
+	   
     }    
 }
 ?>

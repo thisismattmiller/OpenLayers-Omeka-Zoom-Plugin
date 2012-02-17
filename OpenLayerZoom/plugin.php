@@ -122,7 +122,7 @@ function open_layer_zoom_display_items($file, array $options=array()){
  **/
 function open_layer_zoom_save_item($item, $post)
 {
-	
+	 
 	
 	//loop through and see if there are any files to zoom   
 	foreach ($_POST as $key => $value)
@@ -205,6 +205,7 @@ function open_layer_zoom_item_form_tabs($tabs)
 			$useHtml .= '<div style="float:left; margin:10px;">
 			<label title="Click and Save Changes to make this image zoom-able" style="width:auto;" for="zoomThis'. $counter .'">
 			<img src="' . WEB_THUMBNAILS . '/' . $file['archive_filename'] . '" /><br />' . $isChecked . '<br /></div>';			
+			$counter++;
 			
 		}
 		
@@ -245,7 +246,7 @@ function open_layer_zoom_zoom_resource($filename){
 	if(file_exists($pathToFull . $root . "_zdata")){	
 		rename(	$pathToFull . $root . "_zdata", ZOOMTILES_DIR . "/" . $root . "_zdata");		
 	}
-	
+
 }
 
 

@@ -9,3 +9,4 @@ Edit an item with a jpg attached to it. On the left is a zoom tab. Check the box
 Edit .OpenLayerZoom/views/shared/common/theme/default/style.css. to change the size/appearance of the zoom viewer.
 Visit http://thisismattmiller.com/zoom for a  demo and more info.
 
+Thanks to Nancy Moussa @ U of Michigan for bug fixes and individual unzoom feature.

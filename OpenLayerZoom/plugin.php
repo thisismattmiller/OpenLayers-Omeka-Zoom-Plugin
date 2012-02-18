@@ -122,24 +122,21 @@ function open_layer_zoom_display_items($file, array $options=array()){
  **/
 function open_layer_zoom_save_item($item, $post)
 {
-	 
+	
 	
 	//loop through and see if there are any files to zoom   
+	$filesave=false;
 	foreach ($_POST as $key => $value)
 	{	
+	
 		if (strpos($key,"open_layer_zoom_filename")!==false){
- 			open_layer_zoom_zoom_resource($value);
+			open_layer_zoom_zoom_resource($value);
+ 			$filesaved=true;
 		}
-	}
-	
-	
-	//was the remove all zoom option set?
-	if (isset($_POST['open_layer_zoom_remove'])){
-		
-       $removeDirs = explode("|",$_POST['open_layer_zoom_remove']);	   
-	   
-	   foreach($removeDirs as $removeDir){		   
-		   if ($removeDir!=''){			
+		else {
+		if ((strpos($key,"open_layer_zoom_removed_hidden")!==false) and ($filesaved!=true)){
+			$removeDir=$value;
+ 			if ($removeDir!=''){			
 				if (strpos($removeDir,'.')!==false){					
 					//they are tring to so somrthing....					
 				}else{				
@@ -149,15 +146,12 @@ function open_layer_zoom_save_item($item, $post)
 							rrmdir(ZOOMTILES_DIR.'/'.$removeDir.'_zdata');						
 						}						
 					}					
-				}			   			   
-		   }		   
-	   }
-	   
-	   	
-		
-	}				
-
-
+				}
+			}
+		}
+		}		
+	}
+ 
 
 	
 }
@@ -170,6 +164,8 @@ function open_layer_zoom_save_item($item, $post)
  **/
 function open_layer_zoom_item_form_tabs($tabs)
 {
+	
+	
     $item = get_current_item();
 		
 	$useHtml= "<span>Only .jpg files attached to the record can be zoom'ed</span>";
@@ -188,34 +184,34 @@ function open_layer_zoom_item_form_tabs($tabs)
 			
 			if (file_exists(ZOOMTILES_DIR.'/'.$root.'_zdata')){
 				
-				$isChecked='<span>This Image is Zoomed</span>';
+				//$isChecked='<span>This Image is Zoomed</span>';
+				$isChecked='<input type="checkbox" checked="checked" name="open_layer_zoom_filename'. $counter .'"  id="open_layer_zoom_filename'. $counter .'" value="'.$root.'"/>This image is Zoomed</label>';
+				$isChecked.='<input type="hidden" name="open_layer_zoom_removed_hidden'. $counter .'"  id="open_layer_zoom_removed_hidden'. $counter .'" value="'.$root.'"/>';
 				
-				$zoomList.=$root.'|';
-				 
+			//	$zoomList.=$root.'|';
+					$title = "Click and Save Changes to make this image un zoom-able";
+					$style_color="color:green";
+					
+//					$useHtml .=  '<br style="clear:both;" /><label style="width:auto;" for="removeZoom">Check this box and "Save Changes" to remove the zoom from all the images.</label>';
 				
 			}else{
 				
-				$isChecked='<input type="checkbox" name="open_layer_zoom_filename'. $counter .'"  id="open_layer_zoom_filename'. $counter .'" value="'.$file['archive_filename'].'"/>Zoom This Image</label>';
-				
+				$isChecked='<input type="checkbox"  name="open_layer_zoom_filename'. $counter .'"  id="open_layer_zoom_filename'. $counter .'" value="'.$file['archive_filename'].'"/>Zoom This Image</label>';
+				$title = "Click and Save Changes to make this image zoom-able";
+				$style_color="color:black";
 			}
 
-			
+			$counter++;
 			
 		
 			$useHtml .= '<div style="float:left; margin:10px;">
-			<label title="Click and Save Changes to make this image zoom-able" style="width:auto;" for="zoomThis'. $counter .'">
+			<label title="'.$title.'" style="width:auto;'.$style_color.';" for="zoomThis'. $counter .'">
 			<img src="' . WEB_THUMBNAILS . '/' . $file['archive_filename'] . '" /><br />' . $isChecked . '<br /></div>';			
-			$counter++;
-			
+				
 		}
 		
 	}
-		
-		
-		
-	
-	$useHtml .=  '<br style="clear:both;" /><br /><br /><br /><hr/><input style="width:auto; float:left;" value="'.$zoomList.'" type="checkbox" name="open_layer_zoom_remove" id="open_layer_zoom_remove"/><label style="width:auto;" for="removeZoom">Check this box and "Save Changes" to remove the zoom from all the images.</label>';
-
+		 
 
     $ttabs = array();
     foreach($tabs as $key => $html) {
@@ -225,7 +221,8 @@ function open_layer_zoom_item_form_tabs($tabs)
         $ttabs[$key] = $html;
     }
     $tabs = $ttabs;
-    return $tabs;
+    return $tabs;	
+ 
 }
 
 

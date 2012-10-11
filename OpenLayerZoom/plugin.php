@@ -20,6 +20,10 @@ have a .jp2 extension, it doesn't know what to do with it.
 - so: hard-coded id in line 102: 
 
 open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB.'/N018796.jp2/'.'",'.$open_zoom_layer_req.');
+
+- it works!
+- have added
+
 **/
 
 if (!defined('OPENLAYERZOOM_PLUGIN_DIR')) {
@@ -100,10 +104,13 @@ function open_layer_zoom_display_items($file, array $options=array()){
 		//it doesn't even come into play if there is just one zoomed image per record.
 		if (isset($_REQUEST['open_zoom_layer_req'])){$open_zoom_layer_req = html_escape($_REQUEST['open_zoom_layer_req']);}else{$open_zoom_layer_req = "-1";}
  		
+ 		// fetch identifier, to use in link to tiles for this jp2 - pbinkley
+ 		$jp2 = item('Dublin Core', 'Identifier') . '.jp2';
+ 		
 		$html = '	
 		
 			<script type="text/javascript">
-				open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB.'/N018796.jp2/'.'",'.$open_zoom_layer_req.');
+				open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB.'/'.$jp2.'/'.'",'.$open_zoom_layer_req.');
 			</script>
 			
 		';

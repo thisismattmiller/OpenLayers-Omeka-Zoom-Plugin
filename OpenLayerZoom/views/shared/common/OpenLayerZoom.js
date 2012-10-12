@@ -62,8 +62,10 @@ var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
 			map = new OpenLayers.Map("open_layer_zoom_map", options);
 			map.addLayer(zoomify);
 			map.addControl(new OpenLayers.Control.PanZoomBar());
+			map.addControl(new OpenLayers.Control.Permalink('permalink',null,
+                {}));
 			map.setBaseLayer(zoomify);
-			map.zoomToMaxExtent();				
+			if (!map.getCenter()) map.zoomToMaxExtent();		
 			
 			/* add overview map
 workaround based on http://osgeo-org.1803224.n2.nabble.com/zoomify-layer-WITH-overview-map-td5534360.html */
@@ -81,15 +83,14 @@ workaround based on http://osgeo-org.1803224.n2.nabble.com/zoomify-layer-WITH-ov
                 mapbounds,
                 new OpenLayers.Size(a, b),
                 { numZoomLevels: 1,
-		          maxExtent: new OpenLayers.Bounds(0, 0, width, height)    
-                }
+      maxExtent: mapbounds,
+      restrictedExtent: mapbounds
+               }
                );
    var overviewVectors = vectorLayer.clone();
    var overviewControl = new OpenLayers.Control.OverviewMap({
       size: new OpenLayers.Size(150, Math.floor(b)),    //This is optional,you may use default values
       autopan: false,
-      maxExtent: mapbounds,
-      restrictedExtent: mapbounds,
       maximized: true,
       layers: [overview, overviewVectors]
    });

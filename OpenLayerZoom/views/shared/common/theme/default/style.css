@@ -25,15 +25,22 @@
     right: 0;
 }
 .olControlOverviewMapExtentRectangle {
-    background-image: url("img/blank.gif");
+    background-image: url("../../img/blank.gif");
     border: 2px dotted red;
     cursor: move;
     overflow: hidden;
 }
 .olControlOverviewMapRectReplacement {
-    background-image: url("img/overview_replacement.gif");
+    background-image: url("../../img/overview_replacement.gif");
     background-position: center center;
     background-repeat: no-repeat;
     cursor: move;
     overflow: hidden;
+}
+.olControlPermalink {
+    bottom: 1.5em;
+    display: block;
+    font-size: smaller;
+    position: absolute;
+    right: 3px;
 }

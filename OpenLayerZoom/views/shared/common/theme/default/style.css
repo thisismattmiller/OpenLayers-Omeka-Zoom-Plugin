@@ -4,3 +4,36 @@
 #open_layer_zoom_map_more{}
 
 #open_layer_zoom_map_more a{margin-right:5px;}
+
+.olControlOverviewMapContainer {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+.olControlOverviewMapElement {
+    background-color: #00008B;
+    padding: 10px 10px 10px 10px;
+}
+.olControlOverviewMapMinimizeButton {
+    cursor: pointer;
+    right: 0;
+    top: 0;
+}
+.olControlOverviewMapMaximizeButton {
+    bottom: 80px;
+    cursor: pointer;
+    right: 0;
+}
+.olControlOverviewMapExtentRectangle {
+    background-image: url("img/blank.gif");
+    border: 2px dotted red;
+    cursor: move;
+    overflow: hidden;
+}
+.olControlOverviewMapRectReplacement {
+    background-image: url("img/overview_replacement.gif");
+    background-position: center center;
+    background-repeat: no-repeat;
+    cursor: move;
+    overflow: hidden;
+}

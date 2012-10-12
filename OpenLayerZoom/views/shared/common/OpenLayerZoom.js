@@ -25,10 +25,35 @@
 		//if this is not a specific request and it is the first image or it is a specifc request display it
 		if ((req==-1&&open_layer_zoom_total_zooms==0) || open_layer_zoom_total_zooms==req){
 			
-			zoomify = new OpenLayers.Layer.Zoomify( "zoom", url, new OpenLayers.Size( width, height ) ); 		
+	/* Vector layer */
+            
+   /*
+   * Layer style
+   */
+
+var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
+   styleMap: new OpenLayers.StyleMap({
+      "default": new OpenLayers.Style({
+         fillColor: "red",
+         fillOpacity: 0,
+         strokeColor: "red",
+         strokeWidth: 0
+      }), 
+	  "highlight": new OpenLayers.Style({
+         fillColor: "red",
+         fillOpacity: 0.2,
+         strokeWidth: 0
+      })
+	})
+});
 	
+	zoomify = new OpenLayers.Layer.Zoomify( "zoom", url, new OpenLayers.Size( width, height ) ); 		
+	
+			var mapbounds =  new OpenLayers.Bounds(0, 0, width, height);
+
 			options = {
-				maxExtent: new OpenLayers.Bounds(0, 0, width, height),
+      maxExtent: mapbounds,
+      restrictedExtent: mapbounds,
 				maxResolution: Math.pow(2, zoomify.numberOfTiers-1 ),
 				numZoomLevels: zoomify.numberOfTiers,
 				units: "pixels"
@@ -40,6 +65,39 @@
 			map.setBaseLayer(zoomify);
 			map.zoomToMaxExtent();				
 			
+			/* add overview map
+workaround based on http://osgeo-org.1803224.n2.nabble.com/zoomify-layer-WITH-overview-map-td5534360.html */
+
+                var ll = Math.floor(width/150);              //Optional number to reduce your original pixel to fit Overview map container (I used Math.floor(width/150), since my container is 150 x 110)
+                var a = width/ll;      
+                var b = height/ll;      
+
+			//New layer and new control:
+
+			
+           var overview = new OpenLayers.Layer.Image(
+                'overview',
+                url + 'TileGroup0/0-0-0.jpg',
+                mapbounds,
+                new OpenLayers.Size(a, b),
+                { numZoomLevels: 1,
+		          maxExtent: new OpenLayers.Bounds(0, 0, width, height)    
+                }
+               );
+   var overviewVectors = vectorLayer.clone();
+   var overviewControl = new OpenLayers.Control.OverviewMap({
+      size: new OpenLayers.Size(150, Math.floor(b)),    //This is optional,you may use default values
+      autopan: false,
+      maxExtent: mapbounds,
+      restrictedExtent: mapbounds,
+      maximized: true,
+      layers: [overview, overviewVectors]
+   });
+
+
+//At last,adding it to the map:
+
+         map.addControl(overviewControl);
   
 		}
 		

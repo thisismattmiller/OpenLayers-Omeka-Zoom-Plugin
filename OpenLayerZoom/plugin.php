@@ -3,14 +3,14 @@
 IIPImage version
 
 Original tile paths: http://localhost/omeka/archive/zoom_tiles/4b937070760d406a5bdab0d07d2a2b87_zdata/TileGroup0/1-1-0.jpg
-New tile paths: http://panther/cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip/N018796.jp2/TileGroup0/4-4-9.jpg
+New tile paths: /cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip/N018796.jp2/TileGroup0/4-4-9.jpg
 
 Strategy:
  - replace ZOOMTILES_WEB to point to panther instead of local Directory
  - change code that builds link to use original item id instead of Omeka's file id
 
 - first test: change name of jp2 to match omeka's file id
-https://pbinkley.dyndns.org/cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip/4b937070760d406a5bdab0d07d2a2b87_zdata/TileGroup0/1-1-0.jpg
+/cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip/4b937070760d406a5bdab0d07d2a2b87_zdata/TileGroup0/1-1-0.jpg
 
 cp N018796.jp2 4b937070760d406a5bdab0d07d2a2b87_zdata 
 
@@ -29,7 +29,7 @@ open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB
 if (!defined('OPENLAYERZOOM_PLUGIN_DIR')) {
     define('OPENLAYERZOOM_PLUGIN_DIR', dirname(__FILE__));
 	define('ZOOMTILES_DIR', ARCHIVE_DIR . '/zoom_tiles');
-	define('ZOOMTILES_WEB', 'https://pbinkley.dyndns.org:59443/cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip');	
+	define('ZOOMTILES_WEB', 'http://ec2-75-101-192-109.compute-1.amazonaws.com/cgi-bin/iipsrv.fcgi?zoomify=/var/www/jp2samples');	
 	define('ZOOM_RESOURCES', WEB_PLUGIN . '/OpenLayerZoom/views/shared/');
 }
 

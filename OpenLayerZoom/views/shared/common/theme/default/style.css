@@ -44,3 +44,32 @@
     position: absolute;
     right: 3px;
 }
+.olControlZoomPanel {
+    left: 14px;
+    top: 71px;
+}
+.olControlZoomPanel div {
+    background-image: url("img/zoom-panel.png");
+    cursor: pointer;
+    height: 18px;
+    position: absolute;
+    width: 18px;
+}
+.olControlZoomPanel .olControlZoomInItemInactive {
+    background-position: 0 0;
+    left: 0;
+    top: 0;
+}
+.olControlZoomPanel .olControlZoomToMaxExtentItemInactive {
+    background-position: 0 -18px;
+    left: 0;
+    top: 18px;
+}
+.olControlZoomPanel .olControlZoomOutItemInactive {
+    background-position: 0 18px;
+    left: 0;
+    top: 36px;
+}
+.olControlPanZoomBar div {
+    font-size: 1px;
+}

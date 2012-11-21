@@ -61,7 +61,7 @@ var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
 			 
 			map = new OpenLayers.Map("open_layer_zoom_map", options);
 			map.addLayer(zoomify);
-			map.addControl(new OpenLayers.Control.PanZoomBar());
+			map.addControl(new OpenLayers.Control.PanZoomBar({"zoomWorldIcon": false}));
 			map.addControl(new OpenLayers.Control.Permalink('permalink',null,
                 {}));
 			map.setBaseLayer(zoomify);

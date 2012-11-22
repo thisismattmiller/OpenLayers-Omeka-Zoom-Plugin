@@ -3,7 +3,7 @@
 IIPImage version
 
 Original tile paths: http://localhost/omeka/archive/zoom_tiles/4b937070760d406a5bdab0d07d2a2b87_zdata/TileGroup0/1-1-0.jpg
-New tile paths: /cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip/N018796.jp2/TileGroup0/4-4-9.jpg
+New tile paths: http://panther/cgi-bin/iipsrv.fcgi?zoomify=/var/www/iip/N018796.jp2/TileGroup0/4-4-9.jpg
 
 Strategy:
  - replace ZOOMTILES_WEB to point to panther instead of local Directory
@@ -98,8 +98,8 @@ function open_layer_zoom_display_items($file, array $options=array()){
  	
 		//grab the width/height
   	    list($width, $height, $type, $attr) = getimagesize(FILES_DIR . '/' . $file['archive_filename']);		
- 
- 		//if the var is set then they are requesting a specifc image to be zoomed not just the first
+	    
+	    //if the var is set then they are requesting a specifc image to be zoomed not just the first
 		//this is kind of a hack to get around some problems with openlayers displaying multiple zoomify layers on a single page
 		//it doesn't even come into play if there is just one zoomed image per record.
 		if (isset($_REQUEST['open_zoom_layer_req'])){$open_zoom_layer_req = html_escape($_REQUEST['open_zoom_layer_req']);}else{$open_zoom_layer_req = "-1";}

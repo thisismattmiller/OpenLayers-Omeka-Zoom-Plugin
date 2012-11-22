@@ -55,7 +55,8 @@ var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
       maxExtent: mapbounds,
       restrictedExtent: mapbounds,
 				maxResolution: Math.pow(2, zoomify.numberOfTiers-1 ),
-				numZoomLevels: zoomify.numberOfTiers,
+				//numZoomLevels: zoomify.numberOfTiers,
+				numZoomLevels: 5,
 				units: "pixels"
 			};		
 			 

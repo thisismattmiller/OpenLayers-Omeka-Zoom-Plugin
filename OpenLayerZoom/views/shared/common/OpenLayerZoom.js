@@ -27,16 +27,24 @@
 			
 			zoomify = new OpenLayers.Layer.Zoomify( "zoom", url, new OpenLayers.Size( width, height ) ); 		
 	
-			options = {
+         // we must list all the controls, since we want to replace the default PanZoom with a PanZoomBar
+         options = {
 				maxExtent: new OpenLayers.Bounds(0, 0, width, height),
 				maxResolution: Math.pow(2, zoomify.numberOfTiers-1 ),
 				numZoomLevels: zoomify.numberOfTiers,
-				units: "pixels"
+				units: "pixels",
+				controls: [
+               new OpenLayers.Control.Navigation(),
+               new OpenLayers.Control.ArgParser(),
+               new OpenLayers.Control.Attribution(),
+               new OpenLayers.Control.PanZoomBar({
+                  "zoomWorldIcon": true
+               })
+            ]
 			};		
 			 
 			map = new OpenLayers.Map("open_layer_zoom_map", options);
 			map.addLayer(zoomify);
-			map.addControl(new OpenLayers.Control.PanZoomBar());
 			map.setBaseLayer(zoomify);
 			map.zoomToMaxExtent();				
 			

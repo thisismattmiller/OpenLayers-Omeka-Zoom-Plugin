@@ -14,6 +14,26 @@
    position:fixed;
    left:0;
    top:0;
-   background-color:black;
+   background-color:grey;
    z-index:701;
+}
+.open_layer_zoom_map_full_window_panel {
+    width: 18px;
+    height: 54px;
+    cursor: pointer;
+    right: 10px;
+    top: 10px;
+}
+/* fullscreen control button; icon from https://github.com/fredj/openlayers-fullscreen */
+.open_layer_zoom_map_full_window_buttonItemInactive, .open_layer_zoom_map_full_window_buttonItemActive {
+    background-image:url('../../img/fullscreen.png');
+    width: 20px;
+    height: 20px;
+}
+
+.open_layer_zoom_map_full_window_buttonItemInactive {
+    background-position: 0 0;
+}
+.open_layer_zoom_map_full_window_buttonItemActive {
+    background-position: 0 -25px;
 }

@@ -19,7 +19,10 @@
 			//yes so add the holders
 			jQuery("#itemfiles").append(jQuery("<div>").attr("id",'open_layer_zoom_map'));
 			jQuery("#itemfiles").append(jQuery("<div>").attr("id",'open_layer_zoom_map_more'));			
- 				 
+ 			jQuery("#itemfiles").append(jQuery("<div>").attr("id",'open_layer_zoom_map_full_window'));
+ 			
+ 			jQuery("#open_layer_zoom_map_full_window").append(jQuery("<a>").attr("href", "javascript:open_layer_zoom_toggle_full_window()").text("Full window"));
+ 			
 		}
 		
 		//if this is not a specific request and it is the first image or it is a specifc request display it
@@ -63,3 +66,7 @@
 		open_layer_zoom_total_zooms=open_layer_zoom_total_zooms+1;
 		 
 	}
+	
+   function open_layer_zoom_toggle_full_window() {
+      jQuery('#open_layer_zoom_map').toggleClass('open_layer_zoom_map_full_window');
+   }

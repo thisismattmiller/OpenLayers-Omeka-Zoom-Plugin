@@ -92,7 +92,11 @@ function open_layer_zoom_display_items($file, array $options=array()){
 	//is this a zoomed image?
 	list($root, $ext) = explode(".",$file['archive_filename']);
 	
-	if (file_exists(ZOOMTILES_DIR.'/'.$root.'_zdata') && ZOOM_ADMIN_VIEW==false){	//do not show the zoomer on the admin page
+	// does it have a Tile Server URL?
+	$tileserverurl = item('Item Type Metadata','Tile Server URL');
+	 
+	// if (file_exists(ZOOMTILES_DIR.'/'.$root.'_zdata') && ZOOM_ADMIN_VIEW==false){	//do not show the zoomer on the admin page
+	if ($tileserverurl != '') {
 	
 		//yess
  	
@@ -105,12 +109,13 @@ function open_layer_zoom_display_items($file, array $options=array()){
 		if (isset($_REQUEST['open_zoom_layer_req'])){$open_zoom_layer_req = html_escape($_REQUEST['open_zoom_layer_req']);}else{$open_zoom_layer_req = "-1";}
  		
  		// fetch identifier, to use in link to tiles for this jp2 - pbinkley
- 		$jp2 = item('Dublin Core', 'Identifier') . '.jp2';
+ 		//$jp2 = item('Dublin Core', 'Identifier') . '.jp2';
  		
 		$html = '	
-		
+<p>Width: ' . $width . ' Height: ' . $height . ' Type: ' . $type . ' Attr: ' . $attr . '</p>		
 			<script type="text/javascript">
-				open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB.'/'.$jp2.'/'.'",'.$open_zoom_layer_req.');
+				//open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB.'/'.$jp2.'/'.'",'.$open_zoom_layer_req.');
+				open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.$tileserverurl.'/'.'",'.$open_zoom_layer_req.');
 			</script>
 			
 		';
@@ -297,3 +302,4 @@ function rrmdir($dir) {
 
 
 ?>
+

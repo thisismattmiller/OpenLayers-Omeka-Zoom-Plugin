@@ -68,7 +68,9 @@ function open_layer_zoom_uninstall(){
  **/
 function open_layer_zoom_public_header(){	
 	echo '<script src="' . ZOOM_RESOURCES . 'common/OpenLayers.js"></script>';		
-	echo '<script src="' . ZOOM_RESOURCES . 'common/OpenLayerZoom.js"></script>';			
+echo '<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>';
+echo '<script src="' . ZOOM_RESOURCES . 'common/OpenLayerZoom.js"></script>';			
+//	echo '<script src="http://peel.library.ualberta.ca/-/openlayers/OpenLayerZoom.js"></script>';			
 	echo '<link rel="stylesheet" href="'.ZOOM_RESOURCES.'common/theme/default/style.css" />';
 	
 	define('ZOOM_ADMIN_VIEW', false);
@@ -110,12 +112,16 @@ function open_layer_zoom_display_items($file, array $options=array()){
  		
  		// fetch identifier, to use in link to tiles for this jp2 - pbinkley
  		//$jp2 = item('Dublin Core', 'Identifier') . '.jp2';
- 		
+
+
+// test - hardcode values of width and height
+		$width = 8268;
+		$height = 5350;
 		$html = '	
 <p>Width: ' . $width . ' Height: ' . $height . ' Type: ' . $type . ' Attr: ' . $attr . '</p>		
 			<script type="text/javascript">
 				//open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.ZOOMTILES_WEB.'/'.$jp2.'/'.'",'.$open_zoom_layer_req.');
-				open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.$tileserverurl.'/'.'",'.$open_zoom_layer_req.');
+				open_layer_zoom_add_zoom("'.$root.'","'.$width.'","'.$height.'","'.$tileserverurl.'/",-1);
 			</script>
 			
 		';

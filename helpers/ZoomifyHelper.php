@@ -19,6 +19,14 @@
  * processed images.
  */
 
+// ImageMagick is quicker than GD.
+if (class_exists('Imagick')) {
+    require_once 'ZoomifyFileProcessorImageMagick.php';
+}
+else {
+    require_once 'ZoomifyFileProcessor.php';
+}
+
 class zoomify
 {
     public $_debug = false;

@@ -11,46 +11,44 @@ var open_layers_zoom_total_zooms = 0;
  */
 function open_layers_zoom_add_zoom(file_name_base, width, height, url, req) {
 
-  //is this the first call to this function to add a zoom element?
-  if (! open_layers_zoom_total_zooms) {
+    // Is this the first call to this function to add a zoom element?
+    if (! open_layers_zoom_total_zooms) {
+        // Yes so add the holders
+        jQuery("#item-images").append(jQuery("<div>").attr("id", 'open_layers_zoom_map'));
+        jQuery("#item-images").append(jQuery("<div>").attr("id", 'open_layers_zoom_map_more'));
+        jQuery("#item-images").append(jQuery("<div>").attr("id", 'open_layers_zoom_map_full_window'));
+    }
 
-      //yes so add the holders
-      jQuery("#itemfiles").append(jQuery("<div>").attr("id", 'open_layers_zoom_map'));
-      jQuery("#itemfiles").append(jQuery("<div>").attr("id", 'open_layers_zoom_map_more'));
-      jQuery("#itemfiles").append(jQuery("<div>").attr("id", 'open_layers_zoom_map_full_window'));
-  }
-
-  // if this is not a specific request and it is the first image or it is a
-  // specifc request display it
-  if ((req == -1 && open_layers_zoom_total_zooms == 0) || open_layers_zoom_total_zooms == req) {
+    // If this is not a specific request and it is the first image or it is a
+    // specifc request display it.
+    if ((req == -1 && open_layers_zoom_total_zooms == 0) || open_layers_zoom_total_zooms == req) {
 
     /* Vector layer */
 
-  /*
-  * Layer style
-  */
-
-var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
-  styleMap: new OpenLayers.StyleMap({
-      "default": new OpenLayers.Style({
-        fillColor: "red",
-        fillOpacity: 0,
-        strokeColor: "red",
-        strokeWidth: 0
-      }),
-      "highlight": new OpenLayers.Style({
-        fillColor: "red",
-        fillOpacity: 0.2,
-        strokeWidth: 0
-      })
-    })
-});
+    /**
+     * Layer style
+     */
+    var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
+        styleMap: new OpenLayers.StyleMap({
+          "default": new OpenLayers.Style({
+            fillColor: "red",
+            fillOpacity: 0,
+            strokeColor: "red",
+            strokeWidth: 0
+          }),
+          "highlight": new OpenLayers.Style({
+            fillColor: "red",
+            fillOpacity: 0.2,
+            strokeWidth: 0
+          })
+        })
+    });
 
     zoomify = new OpenLayers.Layer.Zoomify( "zoom", url, new OpenLayers.Size( width, height ) );
 
     var mapbounds =  new OpenLayers.Bounds(0, 0, width, height);
 
-    // full screen button, based on http://jsfiddle.net/_DR_/K2WaA/1/
+    // Full screen button, based on http://jsfiddle.net/_DR_/K2WaA/1/
     var fullscreenPanel = new OpenLayers.Control.Panel({displayClass: 'open_layers_zoom_map_full_window_panel'});
 
     var fullscreenControl = new OpenLayers.Control.Button({
@@ -71,7 +69,7 @@ var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
     });
     fullscreenPanel.addControls(fullscreenControl);
 
-    // we must list all the controls, since we want to replace the default
+    // We must list all the controls, since we want to replace the default
     // PanZoom with a PanZoomBar
     options = {
         maxExtent: mapbounds,
@@ -96,19 +94,17 @@ var vectorLayer = new OpenLayers.Layer.Vector("Simple Geometry", {
     map.setBaseLayer(zoomify);
 
     if (!map.getCenter()) map.zoomToMaxExtent();
-        /* add overview map
-workaround based on http://osgeo-org.1803224.n2.nabble.com/zoomify-layer-WITH-overview-map-td5534360.html */
+        // Add overview map
+        // workaround based on http://osgeo-org.1803224.n2.nabble.com/zoomify-layer-WITH-overview-map-td5534360.html
 
-        //Optional number to reduce your original pixel to fit Overview
-        // map container (I used Math.floor(width/150), since my
-        // container is 150 x 110)
+        // Optional number to reduce your original pixel to fit Overview map
+        // container (I used Math.floor(width/150), since my container is
+        // 150 x 110)
         var ll = Math.floor(width/150);
         var a = width/ll;
         var b = height/ll;
 
         //New layer and new control:
-
-
         var overview = new OpenLayers.Layer.Image(
             'overview',
             url + 'TileGroup0/0-0-0.jpg',
@@ -121,17 +117,18 @@ workaround based on http://osgeo-org.1803224.n2.nabble.com/zoomify-layer-WITH-ov
         );
         var overviewVectors = vectorLayer.clone();
         var overviewControl = new OpenLayers.Control.OverviewMap({
-            size: new OpenLayers.Size(150, Math.floor(b)),    //This is optional,you may use default values
+            // This is optional,you may use default values.
+            size: new OpenLayers.Size(150, Math.floor(b)),
             autopan: false,
             maximized: true,
             layers: [overview, overviewVectors]
         });
 
-    //At last,adding it to the map:
-    map.addControl(overviewControl);
+        // At last,adding it to the map:
+        map.addControl(overviewControl);
     }
 
-    //now add in the links
+    // Now add in the links.
     jQuery("#open_layers_zoom_map_more").empty();
     if (open_layers_zoom_total_zooms > 0) {
         for (x = 0; x <= open_layers_zoom_total_zooms; x++) {

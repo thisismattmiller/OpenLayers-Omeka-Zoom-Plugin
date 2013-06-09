@@ -54,7 +54,7 @@ class ZoomifyFileProcessor
     /**
      * Initialization.
      */
-    function __init()
+    function __construct()
     {
         $this->fileMode = octdec($this->fileMode);
         $this->dirMode = octdec($this->dirMode);

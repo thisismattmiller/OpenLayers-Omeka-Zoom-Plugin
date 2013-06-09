@@ -29,8 +29,24 @@ Installation
 Unzip [OpenLayers Zoom] into the plugin directory, rename the folder
 "OpenLayersZoom" if needed, then install it from the settings panel.
 
-In the `items/show.php` of your theme, replace `echo display_file(...)` with
-`open_layers_zoom_display_file(...)`.
+In the `items/show.php` of your theme, replace:
+
+```
+    <div id="item-images">
+        <?php echo files_for_item(); ?>
+    </div>
+```
+
+by
+
+```
+    <div id="item-images">
+        <?php set_loop_records('files', $item->getFiles());
+        foreach (loop('files') as $file):
+            fire_plugin_hook('open_layers_zoom_display_file', array('file' => $file));
+        endforeach; ?>
+    </div>
+```
 
 Edit `views/shared/css/OpenLayersZoom.css` to change the size/appearance of the
 zoom viewer.
@@ -106,6 +122,7 @@ Current maintainers:
 First version of this plugin has been built by [Matt Miller].
 Thanks to Nancy Moussa @ U of Michigan for bug fixes and individual unzoom feature.
 It has been improved by [Peter Binkley] for [University of Alberta Libraries].
+The upgrade for Omeka 2.0 has been built for [Mines ParisTech].
 
 
 Copyright
@@ -133,3 +150,4 @@ See copyrights for libraries in files inside `helpers` folder.
 [Peter Binkley]: https://github.com/pbinkley
 [University of Alberta Libraries]: https://github.com/ualbertalib
 [Matt Miller]: https://github.com/thisismattmiller
+[Mines ParisTech]: http://bib.mines-paristech.fr "Mines ParisTech / ENSMP"

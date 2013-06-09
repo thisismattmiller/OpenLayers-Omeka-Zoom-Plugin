@@ -40,9 +40,53 @@ class zoomify
      *
      * @return void
      */
-    function zoomify($imagepath)
+    function __construct($imagepath)
     {
         define('IMAGEPATH', $imagepath);
+        $this->fileMode = octdec($this->fileMode);
+        $this->dirMode = octdec($this->dirMode);
+    }
+
+    /**
+     * Run the zoomify converter on the specified file.
+     *
+     * Check to be sure the file hasn't been converted already.
+     * Set the perms appropriately.
+     *
+     * @return void
+     */
+    public function zoomifyObject($filename, $path)
+    {
+        $converter = new ZoomifyFileProcessor();
+        $converter->_debug = $this->_debug;
+        $converter->fileMode = $this->fileMode;
+        $converter->dirMode = $this->dirMode;
+        $converter->fileGroup = $this->fileGroup;
+
+        $trimmedFilename = $this->stripExtension($filename);
+
+        if (!file_exists($path . $trimmedFilename)) {
+            $file_to_process = $path . $filename;
+            // echo "Processing " . $file_to_process . "...<br />";
+            $converter->ZoomifyProcess($file_to_process);
+        }
+        else {
+            // echo "Skipping " . $path . $filename . "... (" . $path . $trimmedFilename . " exists)<br />";
+        }
+    }
+
+    /**
+     * Process the specified directory.
+     *
+     * @return void
+     */
+    public function processImages()
+    {
+        $objects = $this->getImageList(IMAGEPATH);
+
+        foreach ($objects as $object) {
+            $this->zoomifyObject($object, IMAGEPATH);
+        }
     }
 
     /**
@@ -53,7 +97,7 @@ class zoomify
      *
      * @return string|boolean
      */
-    function listZoomifiedImages($dir)
+    public function listZoomifiedImages($dir)
     {
         if ($dh = @opendir($dir)) {
             while (false !== ($filename = readdir($dh))) {
@@ -72,34 +116,6 @@ class zoomify
     }
 
     /**
-     * Returns an array containing each entry in the directory.
-     *
-     * @param string @dir
-     *   path to a directory.
-     *
-     * @return array|boolean
-     */
-    function getDirList($dir)
-    {
-        if ($dh = @opendir($dir)) {
-            while (false !== ($filename = readdir($dh))) {
-                if (($filename != '.')
-                        && ($filename != '..')
-                    ) {
-                    $filelist[] = $filename;
-                }
-            }
-
-            sort($filelist);
-
-            return $filelist;
-        }
-        else {
-            return false;
-        }
-    }
-
-    /**
      * Returns an array with every file in the directory that is not a dir.
      *
      * @param string @dir
@@ -107,7 +123,7 @@ class zoomify
      *
      * @return array|boolean
      */
-    function getImageList($dir)
+    protected function getImageList($dir)
     {
         if ($dh = @opendir($dir)) {
             while (false !== ($filename = readdir($dh))) {
@@ -129,47 +145,31 @@ class zoomify
 
     }
 
-
     /**
-     * Run the zoomify converter on the specified file.
+     * Returns an array containing each entry in the directory.
      *
-     * Check to be sure the file hasn't been converted already.
-     * Set the perms appropriately.
+     * @param string @dir
+     *   path to a directory.
      *
-     * @return void
+     * @return array|boolean
      */
-    function zoomifyObject($filename, $path)
+    protected function getDirList($dir)
     {
-        $converter = new ZoomifyFileProcessor();
-        $converter->_debug = $this->_debug;
-        $converter->fileMode = octdec($this->fileMode);
-        $converter->dirMode = octdec($this->dirMode);
-        $converter->fileGroup = $this->fileGroup;
+        if ($dh = @opendir($dir)) {
+            while (false !== ($filename = readdir($dh))) {
+                if (($filename != '.')
+                        && ($filename != '..')
+                    ) {
+                    $filelist[] = $filename;
+                }
+            }
 
-        $trimmedFilename = $this->stripExtension($filename);
+            sort($filelist);
 
-        if (!file_exists($path . $trimmedFilename)) {
-            $file_to_process = $path . $filename;
-            // echo "Processing " . $file_to_process . "...<br />";
-            $converter->ZoomifyProcess($file_to_process);
+            return $filelist;
         }
         else {
-            // echo "Skipping " . $path . $filename . "... (" . $path . $trimmedFilename . " exists)<br />";
-        }
-    }
-
-
-    /**
-     * Process the specified directory.
-     *
-     * @return void
-     */
-    function processImages()
-    {
-        $objects = $this->getImageList(IMAGEPATH);
-
-        foreach ($objects as $object) {
-            $this->zoomifyObject($object,IMAGEPATH);
+            return false;
         }
     }
 
@@ -178,7 +178,7 @@ class zoomify
      *
      * @return string
      */
-    function stripExtension($filename)
+    protected function stripExtension($filename)
     {
         return pathinfo($filename, PATHINFO_EXTENSION)
             ? substr($filename, 0, strrpos($filename, '.'))

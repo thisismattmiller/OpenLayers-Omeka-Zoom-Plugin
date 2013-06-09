@@ -1,8 +1,6 @@
 <?php
 /**
- * OpenLayers Zoom
- *
- * IIPImage compatible
+ * OpenLayers Zoom: an OpenLayers based image zoom widget.
  *
  * @see README.md
  *
@@ -13,18 +11,12 @@
  * @package OpenLayersZoom
  */
 
-if (!defined('ZOOMTILES_DIR')) {
-    define('ZOOMTILES_DIR', ARCHIVE_DIR . '/zoom_tiles');
-    // define('ZOOMTILES_WEB', 'http://ec2-75-101-192-109.compute-1.amazonaws.com/cgi-bin/iipsrv.fcgi?zoomify=/var/www/jp2samples');
-    define('ZOOMTILES_WEB', WEB_DIR . '/archive/zoom_tiles');
-}
-
 /**
  * Contains code used to integrate the plugin into Omeka.
  *
  * @package OpenLayersZoom
  */
-class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
+class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
 {
     /**
      * @var array Hooks for the plugin.
@@ -32,9 +24,9 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
     protected $_hooks = array(
         'install',
         'uninstall',
-        'admin_theme_header',
-        'public_theme_header',
+        'public_head',
         'after_save_item',
+        'open_layers_zoom_display_file',
     );
 
     /**
@@ -45,14 +37,33 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
     );
 
     /**
+     * @var array Options and their default values.
+     */
+    protected $_options = array(
+        'openlayerszoom_tiles_dir' => '/zoom_tiles',
+        'openlayerszoom_tiles_web' => '/zoom_tiles',
+    );
+
+    /**
      * Installs the plugin.
      */
     public function hookInstall()
     {
+        $this->_options['openlayerszoom_tiles_dir'] = FILES_DIR . DIRECTORY_SEPARATOR . 'zoom_tiles';
+        // define('ZOOMTILES_WEB', 'http://ec2-75-101-192-109.compute-1.amazonaws.com/cgi-bin/iipsrv.fcgi?zoomify=/var/www/jp2samples');
+        $this->_options['openlayerszoom_tiles_web'] = WEB_FILES . '/zoom_tiles';
+
+        $this->_installOptions();
+
         // Check if there is a direcroy in the archive for the zoom titles we
         // will be making.
-        if (!file_exists(ZOOMTILES_DIR)) {
-            mkdir(ZOOMTILES_DIR);
+        $tilesDir = get_option('openlayerszoom_tiles_dir');
+        if (!file_exists($tilesDir)) {
+            mkdir($tilesDir);
+            @chmod($tilesDir, octdec('0755'));
+
+            copy(FILES_DIR . DIRECTORY_SEPARATOR . 'index.html', $tilesDir . DIRECTORY_SEPARATOR . 'index.html');
+            @chmod($tilesDir . DIRECTORY_SEPARATOR . 'index.html', octdec('0644'));
         }
     }
 
@@ -62,32 +73,70 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
     public function hookUninstall()
     {
         // Nuke the zoom tiles directory.
-        $this->_rrmdir(ZOOMTILES_DIR);
-    }
+        $tilesDir = get_option('openlayerszoom_tiles_dir');
+        $this->_rrmdir($tilesDir);
 
-
-    /**
-     * Add css and js in the header of the admin theme.
-     */
-    public function hookAdminThemeHeader($request)
-    {
-        define('ZOOM_ADMIN_VIEW', true);
+        $this->_uninstallOptions();
     }
 
     /**
      * Add css and js in the header of the public theme.
      */
-    public function hookPublicThemeHeader($request)
+    public function hookPublicHead($args)
     {
+        $request = Zend_Controller_Front::getInstance()->getRequest();
         if ($request->getControllerName() == 'items' && $request->getActionName() == 'show') {
-            queue_css('OpenLayersZoom');
-            queue_js(array(
+            queue_css_file('OpenLayersZoom');
+            queue_js_file(array(
                 'OpenLayers',
                 'OpenLayersZoom',
             ));
         }
+    }
 
-        define('ZOOM_ADMIN_VIEW', false);
+    /**
+     * Fired once the record is saved, if there is a `open_layers_zoom_filename`
+     * passed in the $_POST along with save then we know that we need to zoom
+     * resource.
+     */
+    public function hookAfterSaveItem($args)
+    {
+        if (!$args['post']) {
+            return;
+        }
+
+        $item = $args['record'];
+        $post = $args['post'];
+
+        // Loop through and see if there are any files to zoom.
+        $filesave = false;
+        foreach ($post as $key => $value) {
+            if (strpos($key, 'open_layers_zoom_filename') !== false) {
+                $this->_zoom_resource($value);
+                $filesaved = true;
+            }
+            elseif ((strpos($key, 'open_layers_zoom_removed_hidden') !== false) && ($filesaved != true)) {
+                $removeDir = $value;
+                if ($removeDir != '') {
+                    if (strpos($removeDir, '.') !== false) {
+                        // They are something to do...
+                    }
+                    else{
+                        $path = get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $removeDir . '_zdata';
+                        if (file_exists($path)) {
+                            // Make sure there is an image file with this name,
+                            // meaning that it really is a zoomed image dir and
+                            // not deleting the root of the site :(
+                            // We check a derivative, because the original
+                            // image is not always a jpg one.
+                            if (file_exists(FILES_DIR . DIRECTORY_SEPARATOR . 'fullsize' . DIRECTORY_SEPARATOR . $removeDir . '.jpg')) {
+                                $this->_rrmdir($path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -96,35 +145,45 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
      * @todo Need to change this based on how non-zoomed images are to be
      * presented.
      *
-     * @param object $file the file object
-     * @param array $options
+     * @param array $args
+     *   Array containing:
+     *   - 'file': object a file object
+     *   - 'options'
      *
      * @return string
      */
-    public function display_file($file, array $options = array())
+    public function hookOpenLayersZoomDisplayFile($args = array())
     {
+        if (!isset($args['file'])) {
+            return '';
+        }
+
+        $file = $args['file'];
+        $options = isset($args['options']) ? $args['options'] : array();
+
         // Is this a zoomed image?
         // Root is not used in the javascript, but only here.
-        list($root, $ext) = $this->_getRootAndExtension($file->archive_filename);
+        list($root, $ext) = $this->_getRootAndExtension($file->filename);
 
         // Is it a zoomified file?
         $tileUrl = '';
         // Does it use a IIPImage server?
         if ($this->_useIIPImageServer()) {
-            $tileUrl = item('Item Type Metadata', 'Tile Server URL');
+            $item = $file->getItem();
+            $tileUrl = metadata($item, array('Item Type Metadata', 'Tile Server URL'));
         }
         // Does it have zoom tiles?
-        elseif (file_exists(ZOOMTILES_DIR . DIRECTORY_SEPARATOR . $root . '_zdata')) {
+        elseif (file_exists(get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . '_zdata')) {
             // fetch identifier, to use in link to tiles for this jp2 - pbinkley
             // $jp2 = item('Dublin Core', 'Identifier') . '.jp2';
             // $tileUrl = ZOOMTILES_WEB . '/' . $jp2;
-            $tileUrl = ZOOMTILES_WEB . '/' . $root . '_zdata';
+            $tileUrl = get_option('openlayerszoom_tiles_web') . '/' . $root . '_zdata';
         }
 
         // Do not show the zoomer on the admin page.
-        if ($tileUrl && !ZOOM_ADMIN_VIEW) {
+        if ($tileUrl) {
             // Grab the width/height of the original image.
-            list($width, $height, $type, $attr) = getimagesize(FILES_DIR . DIRECTORY_SEPARATOR . $file->archive_filename);
+            list($width, $height, $type, $attr) = getimagesize(FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR . $file->filename);
 
             // If the var is set then they are requesting a specific image to be
             // zoomed not just the first.
@@ -143,69 +202,31 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
 
         // Else display normal file.
         else {
-            $html = display_file($file, $options);
+            $html = file_markup($file, $options);
         }
-
-        return $html;
-    }
-
-    /**
-     * Fired once the record is saved, if there is a `open_layers_zoom_filename`
-     * passed in the $_POST along with save then we know that we need to zoom
-     * resource.
-     */
-    public function hookAfterSaveItem($item)
-    {
-        // Loop through and see if there are any files to zoom.
-        $filesave = false;
-        foreach ($_POST as $key => $value) {
-            if (strpos($key, 'open_layers_zoom_filename') !== false) {
-                $this->_zoom_resource($value);
-                $filesaved = true;
-            }
-            else {
-                if ((strpos($key, 'open_layers_zoom_removed_hidden') !== false) and ($filesaved != true)) {
-                    $removeDir = $value;
-                    if ($removeDir != '') {
-                        if (strpos($removeDir, '.') !== false) {
-                            // They are something to do...
-                        }
-                        else{
-                            if (file_exists(ZOOMTILES_DIR . DIRECTORY_SEPARATOR . $removeDir . '_zdata')) {
-                                // Make sure there is an image file with this name,
-                                // meaning that it really is a zoomed image dir and
-                                // not deleting the root of the site :(
-                                // We check a derivative, because the original
-                                // image is not always a jpg one.
-                                if (file_exists(FULLSIZE_DIR . DIRECTORY_SEPARATOR . $removeDir . '.jpg')) {
-                                    $this->_rrmdir(ZOOMTILES_DIR . DIRECTORY_SEPARATOR . $removeDir . '_zdata');
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        echo $html;
     }
 
     /**
      * Adds the zoom options to the images attached to the record, it inserts a
      * "Zoom" tab in the admin->edit page
+     *
+     * @return array of tabs
      */
-    public function filterAdminItemsFormTabs($tabs)
+    public function filterAdminItemsFormTabs($tabs, $args)
     {
-        $item = get_current_item();
+        $item = $args['item'];
 
         $useHtml = '<span>' . __('Only images files attached to the record can be zoomed.') . '</span>';
         $counter = 0;
         $zoomList = '';
 
         foreach($item->Files as $file) {
-            if (strpos($file->mime_os, 'image/') === 0) {
+            if (strpos($file->mime_type, 'image/') === 0) {
                 // See if this image has been zoooomed yet.
-                list($root, $ext) = $this->_getRootAndExtension($file->archive_filename);
+                list($root, $ext) = $this->_getRootAndExtension($file->filename);
 
-                if (file_exists(ZOOMTILES_DIR . DIRECTORY_SEPARATOR . $root . '_zdata')) {
+                if (file_exists(get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . '_zdata')) {
                     // $isChecked = '<span>' . __('This Image is zoomed.') . '</span>';
                     $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $root . '"/>' . __('This image is zoomed.') . '</label>';
                     $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden' . $counter . '" id="open_layers_zoom_removed_hidden' . $counter . '" value="' . $root . '"/>';
@@ -216,7 +237,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
                     // $useHtml .= '<br style="clear:both;" /><label style="width:auto;" for="removeZoom">' . __('Check this box and "Save Changes" to remove the zoom from all the images.') . '</label>';
                 }
                 else {
-                    $isChecked = '<input type="checkbox" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->archive_filename . '"/>' . __('Zoom this image') . '</label>';
+                    $isChecked = '<input type="checkbox" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('Zoom this image') . '</label>';
                     $title = __('Click and Save Changes to make this image zoom-able');
                     $style_color = "color:black";
                 }
@@ -226,7 +247,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
                 $useHtml .= '
                 <div style="float:left; margin:10px;">
                     <label title="' . $title . '" style="width:auto;' . $style_color . ';" for="zoomThis' . $counter . '">'
-                    . display_file($file, array('imageSize'=>'thumbnail'))
+                    . file_markup($file, array('imageSize'=>'thumbnail'))
                     . $isChecked . '<br />
                 </div>';
             }
@@ -234,7 +255,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
 
         $ttabs = array();
         foreach($tabs as $key => $html) {
-            if ($key == 'Miscellaneous') {
+            if ($key == 'Tags') {
                 $ttabs['Zoom'] = $useHtml;
             }
             $ttabs[$key] = $html;
@@ -252,7 +273,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
     {
         include_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers'. DIRECTORY_SEPARATOR . 'ZoomifyHelper.php';
 
-        $pathToFull = FILES_DIR . DIRECTORY_SEPARATOR;
+        $pathToFull = FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR;
         $zoomifyObject = new zoomify($pathToFull);
         $zoomifyObject->zoomifyObject($filename, $pathToFull);
 
@@ -261,7 +282,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
         // Tiles are built in-place, in a subdir of the original image folder.
         // Move the tiles into their storage directory.
         if (file_exists($pathToFull . $root . '_zdata')) {
-            rename( $pathToFull . $root . '_zdata', ZOOMTILES_DIR . DIRECTORY_SEPARATOR . $root . '_zdata');
+            rename($pathToFull . $root . '_zdata', get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . '_zdata');
         }
     }
 
@@ -318,26 +339,11 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_Abstract
                     AND elements.name = ?
                 LIMIT 1
             ";
-            $bind = array(
-                3,
-                'Tile Server URL'
-            );
+            $bind = array(3, 'Tile Server URL');
             $IIPImage = $db->fetchOne($sql, $bind);
             $flag = (boolean) $IIPImage;
         }
 
         return $flag;
     }
-}
-
-/** Installation of the plugin. */
-$OpenLayersZoomPlugin = new OpenLayersZoomPlugin();
-$OpenLayersZoomPlugin->setUp();
-
-/**
- * Wrapper called by theme.
- */
-function open_layers_zoom_display_file($file = NULL, array $options = array()) {
-    $OpenLayersZoom = new OpenLayersZoomPlugin();
-    return $OpenLayersZoom->display_file($file, $options);
 }

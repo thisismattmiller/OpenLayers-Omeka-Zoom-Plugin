@@ -30,8 +30,8 @@ else {
 class zoomify
 {
     public $_debug = false;
-    public $fileMode = '0644';
-    public $dirMode = '0755';
+    public $fileMode = 0644;
+    public $dirMode = 0755;
     public $fileGroup = 'www-data';
 
     /**
@@ -43,8 +43,8 @@ class zoomify
     function __construct($imagepath)
     {
         define('IMAGEPATH', $imagepath);
-        $this->fileMode = octdec($this->fileMode);
-        $this->dirMode = octdec($this->dirMode);
+        $this->fileMode = $this->fileMode;
+        $this->dirMode = $this->dirMode;
     }
 
     /**

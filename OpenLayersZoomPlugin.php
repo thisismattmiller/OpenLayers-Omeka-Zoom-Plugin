@@ -19,6 +19,11 @@
 class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
 {
     /**
+     * @var string Extension added to a folder name to store data and tiles.
+     */
+    const ZOOM_FOLDER_EXTENSION = '_zdata';
+
+    /**
      * @var array Hooks for the plugin.
      */
     protected $_hooks = array(
@@ -26,6 +31,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         'uninstall',
         'public_head',
         'after_save_item',
+        'before_delete_file',
         'open_layers_zoom_display_file',
     );
 
@@ -55,15 +61,15 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
 
         $this->_installOptions();
 
-        // Check if there is a direcroy in the archive for the zoom titles we
+        // Check if there is a directory in the archive for the zoom titles we
         // will be making.
         $tilesDir = get_option('openlayerszoom_tiles_dir');
         if (!file_exists($tilesDir)) {
             mkdir($tilesDir);
-            @chmod($tilesDir, octdec('0755'));
+            @chmod($tilesDir, 0755);
 
             copy(FILES_DIR . DIRECTORY_SEPARATOR . 'index.html', $tilesDir . DIRECTORY_SEPARATOR . 'index.html');
-            @chmod($tilesDir . DIRECTORY_SEPARATOR . 'index.html', octdec('0644'));
+            @chmod($tilesDir . DIRECTORY_SEPARATOR . 'index.html', 0644);
         }
     }
 
@@ -111,32 +117,26 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         // Loop through and see if there are any files to zoom.
         $filesave = false;
         foreach ($post as $key => $value) {
+            // Value is the filename of the stored image.
             if (strpos($key, 'open_layers_zoom_filename') !== false) {
-                $this->_zoom_resource($value);
+                $this->_createTiles($value);
                 $filesaved = true;
             }
             elseif ((strpos($key, 'open_layers_zoom_removed_hidden') !== false) && ($filesaved != true)) {
-                $removeDir = $value;
-                if ($removeDir != '') {
-                    if (strpos($removeDir, '.') !== false) {
-                        // They are something to do...
-                    }
-                    else{
-                        $path = get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $removeDir . '_zdata';
-                        if (file_exists($path)) {
-                            // Make sure there is an image file with this name,
-                            // meaning that it really is a zoomed image dir and
-                            // not deleting the root of the site :(
-                            // We check a derivative, because the original
-                            // image is not always a jpg one.
-                            if (file_exists(FILES_DIR . DIRECTORY_SEPARATOR . 'fullsize' . DIRECTORY_SEPARATOR . $removeDir . '.jpg')) {
-                                $this->_rrmdir($path);
-                            }
-                        }
-                    }
-                }
+                $this->_removeZDataDir($value);
             }
         }
+    }
+
+    /**
+     * Manages deletion of the folder of a file when this file is removed.
+     */
+    public function hookBeforeDeleteFile($args)
+    {
+        $file = $args['record'];
+        $item = $file->getItem();
+
+        $this->_removeZDataDir($file);
     }
 
     /**
@@ -161,10 +161,6 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $file = $args['file'];
         $options = isset($args['options']) ? $args['options'] : array();
 
-        // Is this a zoomed image?
-        // Root is not used in the javascript, but only here.
-        list($root, $ext) = $this->_getRootAndExtension($file->filename);
-
         // Is it a zoomified file?
         $tileUrl = '';
         // Does it use a IIPImage server?
@@ -173,15 +169,18 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
             $tileUrl = metadata($item, array('Item Type Metadata', 'Tile Server URL'));
         }
         // Does it have zoom tiles?
-        elseif (file_exists(get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . '_zdata')) {
+        elseif (file_exists($this->_getZDataDir($file))) {
             // fetch identifier, to use in link to tiles for this jp2 - pbinkley
             // $jp2 = item('Dublin Core', 'Identifier') . '.jp2';
             // $tileUrl = ZOOMTILES_WEB . '/' . $jp2;
-            $tileUrl = get_option('openlayerszoom_tiles_web') . '/' . $root . '_zdata';
+            $tileUrl = $this->_getZDataWeb($file);
         }
 
         // Do not show the zoomer on the admin page.
         if ($tileUrl) {
+            // Root is not used in the javascript, but only here.
+            list($root, $ext) = $this->_getRootAndExtension($file->filename);
+
             // Grab the width/height of the original image.
             list($width, $height, $type, $attr) = getimagesize(FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR . $file->filename);
 
@@ -224,18 +223,15 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         foreach($item->Files as $file) {
             if (strpos($file->mime_type, 'image/') === 0) {
                 // See if this image has been zoooomed yet.
-                list($root, $ext) = $this->_getRootAndExtension($file->filename);
+                // Zoomed image.
+                if (file_exists($this->_getZDataDir($file))) {
+                    $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('This image is zoomed.') . '</label>';
+                    $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden' . $counter . '" id="open_layers_zoom_removed_hidden' . $counter . '" value="' . $file->filename . '"/>';
 
-                if (file_exists(get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . '_zdata')) {
-                    // $isChecked = '<span>' . __('This Image is zoomed.') . '</span>';
-                    $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $root . '"/>' . __('This image is zoomed.') . '</label>';
-                    $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden' . $counter . '" id="open_layers_zoom_removed_hidden' . $counter . '" value="' . $root . '"/>';
-
-                    // $zoomList .= $root . '|';
                     $title = __('Click and Save Changes to make this image un zoom-able');
                     $style_color = "color:green";
-                    // $useHtml .= '<br style="clear:both;" /><label style="width:auto;" for="removeZoom">' . __('Check this box and "Save Changes" to remove the zoom from all the images.') . '</label>';
                 }
+                // Non zoomed image.
                 else {
                     $isChecked = '<input type="checkbox" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('Zoom this image') . '</label>';
                     $title = __('Click and Save Changes to make this image zoom-able');
@@ -269,20 +265,107 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
      *
      * @param filename of image
      */
-    protected function _zoom_resource($filename)
+    protected function _createTiles($filename)
     {
         include_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers'. DIRECTORY_SEPARATOR . 'ZoomifyHelper.php';
 
-        $pathToFull = FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR;
-        $zoomifyObject = new zoomify($pathToFull);
-        $zoomifyObject->zoomifyObject($filename, $pathToFull);
-
-        list($root, $ext) = $this->_getRootAndExtension($filename);
-
         // Tiles are built in-place, in a subdir of the original image folder.
-        // Move the tiles into their storage directory.
-        if (file_exists($pathToFull . $root . '_zdata')) {
-            rename($pathToFull . $root . '_zdata', get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . '_zdata');
+        // TODO Add a destination path to use local server path and to avoid move.
+        $originalDir = FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR;
+        list($root, $ext) = $this->_getRootAndExtension($filename);
+        $sourcePath = $originalDir . $root . '_zdata';
+
+        $zoomifyObject = new zoomify($originalDir);
+        $zoomifyObject->zoomifyObject($filename, $originalDir);
+
+       // Move the tiles into their storage directory.
+        if (file_exists($sourcePath)) {
+            // Check if destination folder exists, else create it.
+            $destinationPath = $this->_getZDataDir($filename);
+            if (!is_dir(dirname($destinationPath))) {
+                $result = mkdir(dirname($destinationPath), 0755, true);
+                if (!$result) {
+                    $message = __('Impossible to create destination directory: "%s" for file "%s".', $destinationPath, basename($filename));
+                    _log($message, Zend_Log::WARN);
+                    throw new Omeka_Storage_Exception($message);
+                }
+            }
+            rename($sourcePath, $destinationPath);
+        }
+    }
+
+    /**
+     * Explode a filepath in a root and an extension, i.e. "/path/file.ext" to
+     * "/path/file" and "ext".
+     *
+     * @return array
+     */
+    protected function _getRootAndExtension($filepath)
+    {
+        $extension = pathinfo($filepath, PATHINFO_EXTENSION);
+        $root = $extension ? substr($filepath, 0, strrpos($filepath, '.')) : $filepath;
+        return array($root, $extension);
+    }
+
+    /**
+     * Returns the folder where are stored xml data and tiles (zdata path).
+     *
+     * @param string|object $file
+     *   Filename or file object.
+     *
+     * @return string
+     *   Full folder path where xml data and tiles are stored.
+     */
+    protected function _getZDataDir($file)
+    {
+        $filename = is_string($file) ? $file : $file->filename;
+        list($root, $extension) = $this->_getRootAndExtension($filename);
+        return get_option('openlayerszoom_tiles_dir') . DIRECTORY_SEPARATOR . $root . self::ZOOM_FOLDER_EXTENSION;
+    }
+
+    /**
+     * Returns the url to the folder where are stored xml data and tiles (zdata
+     * path).
+     *
+     * @param string|object $file
+     *   Filename or file object.
+     *
+     * @return string
+     *   Url where xml data and tiles are stored.
+     */
+    protected function _getZDataWeb($file)
+    {
+        $filename = is_string($file) ? $file : $file->filename;
+        list($root, $extension) = $this->_getRootAndExtension($filename);
+        return get_option('openlayerszoom_tiles_web') . DIRECTORY_SEPARATOR . $root . self::ZOOM_FOLDER_EXTENSION;
+    }
+
+    /**
+     * Manages deletion of the folder of a file when this file is removed.
+     *
+     * @param string|object $file
+     *   Filename or file object.
+     *
+     * @return void
+     */
+    protected function _removeZDataDir($file)
+    {
+        $file = is_string($file) ? $file : $file->filename;
+        if ($file == '' || $file == '/') {
+            return;
+        }
+
+        $removeDir = $this->_getZDataDir($file);
+        if (file_exists($removeDir)) {
+            // Make sure there is an image file with this name,
+            // meaning that it really is a zoomed image dir and
+            // not deleting the root of the site :(
+            // We check a derivative, because the original image
+            // is not always a jpg one.
+            list($root, $ext) = $this->_getRootAndExtension($file);
+            if (file_exists(FILES_DIR . DIRECTORY_SEPARATOR . 'fullsize' . DIRECTORY_SEPARATOR . $root . '.jpg')) {
+                $this->_rrmdir($removeDir);
+            }
         }
     }
 
@@ -306,19 +389,6 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
             }
         }
         return true;
-    }
-
-    /**
-     * Explode a filepath in a root and an extension, i.e. "/path/file.ext" to
-     * "/path/file" and "ext".
-     *
-     * @return array
-     */
-    protected function _getRootAndExtension($filepath)
-    {
-        $extension = pathinfo($filepath, PATHINFO_EXTENSION);
-        $root = $extension ? substr($filepath, 0, strrpos($filepath, '.')) : $filepath;
-        return array($root, $extension);
     }
 
     /**

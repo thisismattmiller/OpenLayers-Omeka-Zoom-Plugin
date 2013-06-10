@@ -35,8 +35,8 @@ class ZoomifyFileProcessor
 {
     public $_debug = false;
 
-    public $fileMode = '0644';
-    public $dirMode = '0755';
+    public $fileMode = 0644;
+    public $dirMode = 0755;
     public $fileGroup = 'www-data';
 
     public $tileSize = 256;
@@ -50,15 +50,6 @@ class ZoomifyFileProcessor
     protected $_scaleInfo = array();
     protected $_tileGroupMappings = array();
     protected $_numberOfTiles = 0;
-
-    /**
-     * Initialization.
-     */
-    function __construct()
-    {
-        $this->fileMode = octdec($this->fileMode);
-        $this->dirMode = octdec($this->dirMode);
-    }
 
     /**
      * The method the client calls to generate zoomify metadata.

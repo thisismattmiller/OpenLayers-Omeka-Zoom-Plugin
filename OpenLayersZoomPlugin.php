@@ -11,6 +11,8 @@
  * @package OpenLayersZoom
  */
 
+require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'OpenLayersZoomFunctions.php';
+
 /**
  * Contains code used to integrate the plugin into Omeka.
  *
@@ -68,7 +70,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
             mkdir($tilesDir);
             @chmod($tilesDir, 0755);
 
-            copy(FILES_DIR . DIRECTORY_SEPARATOR . 'index.html', $tilesDir . DIRECTORY_SEPARATOR . 'index.html');
+            copy(FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR . 'index.html', $tilesDir . DIRECTORY_SEPARATOR . 'index.html');
             @chmod($tilesDir . DIRECTORY_SEPARATOR . 'index.html', 0644);
         }
     }
@@ -87,6 +89,8 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
 
     /**
      * Add css and js in the header of the public theme.
+     *
+     * TODO Don't add css and javascript when OpenLayersZoom is not used.
      */
     public function hookPublicHead($args)
     {
@@ -162,19 +166,7 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $options = isset($args['options']) ? $args['options'] : array();
 
         // Is it a zoomified file?
-        $tileUrl = '';
-        // Does it use a IIPImage server?
-        if ($this->_useIIPImageServer()) {
-            $item = $file->getItem();
-            $tileUrl = metadata($item, array('Item Type Metadata', 'Tile Server URL'));
-        }
-        // Does it have zoom tiles?
-        elseif (file_exists($this->_getZDataDir($file))) {
-            // fetch identifier, to use in link to tiles for this jp2 - pbinkley
-            // $jp2 = item('Dublin Core', 'Identifier') . '.jp2';
-            // $tileUrl = ZOOMTILES_WEB . '/' . $jp2;
-            $tileUrl = $this->_getZDataWeb($file);
-        }
+        $tileUrl = $this->getTileUrl($file);
 
         // Do not show the zoomer on the admin page.
         if ($tileUrl) {
@@ -261,37 +253,109 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
     }
 
     /**
-     * Passed a file name, it will initilize the zoomify and cut the tiles.
+     * Get an array of all zoomed images of an item.
      *
-     * @param filename of image
+     * @param object $item
+     *
+     * @return array
+     *   Associative array of file id and files.
      */
-    protected function _createTiles($filename)
+    public function getZoomedFiles($item = null)
     {
-        include_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers'. DIRECTORY_SEPARATOR . 'ZoomifyHelper.php';
-
-        // Tiles are built in-place, in a subdir of the original image folder.
-        // TODO Add a destination path to use local server path and to avoid move.
-        $originalDir = FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR;
-        list($root, $ext) = $this->_getRootAndExtension($filename);
-        $sourcePath = $originalDir . $root . '_zdata';
-
-        $zoomifyObject = new zoomify($originalDir);
-        $zoomifyObject->zoomifyObject($filename, $originalDir);
-
-       // Move the tiles into their storage directory.
-        if (file_exists($sourcePath)) {
-            // Check if destination folder exists, else create it.
-            $destinationPath = $this->_getZDataDir($filename);
-            if (!is_dir(dirname($destinationPath))) {
-                $result = mkdir(dirname($destinationPath), 0755, true);
-                if (!$result) {
-                    $message = __('Impossible to create destination directory: "%s" for file "%s".', $destinationPath, basename($filename));
-                    _log($message, Zend_Log::WARN);
-                    throw new Omeka_Storage_Exception($message);
-                }
-            }
-            rename($sourcePath, $destinationPath);
+        if ($item == null) {
+            $item = get_current_record('item');
         }
+
+        $list = array();
+        set_loop_records('files', $item->getFiles());
+        foreach (loop('files') as $file) {
+            if ($this->isZoomed($file)) {
+                $list[$file->id] = $file;
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * Count the number of zoomed images attached to an item.
+     *
+     * @param object $item
+     *
+     * @return integer
+     *   Number of zoomed images attached to an item.
+     */
+    public function zoomedFilesCount($item = null)
+    {
+        return count($this->getZoomedFiles($item));
+    }
+
+    /**
+     * Get the url to tiles or a zoomified file, if any.
+     *
+     * @param object $file
+     *
+     * @return string
+     */
+    public function getTileUrl($file = null)
+    {
+        if ($file == null) {
+            $file = get_current_record('file');
+        }
+
+        $tileUrl = '';
+        // Does it use a IIPImage server?
+        if ($this->_useIIPImageServer()) {
+            $item = $file->getItem();
+            $tileUrl = metadata($item, array('Item Type Metadata', 'Tile Server URL'));
+        }
+
+        // Does it have zoom tiles?
+        elseif (file_exists($this->_getZDataDir($file))) {
+            // fetch identifier, to use in link to tiles for this jp2 - pbinkley
+            // $jp2 = item('Dublin Core', 'Identifier') . '.jp2';
+            // $tileUrl = ZOOMTILES_WEB . '/' . $jp2;
+            $tileUrl = $this->_getZDataWeb($file);
+        }
+
+        return $tileUrl;
+    }
+
+    /**
+     * Determine if a file is zoomed.
+     *
+     * @param object $file
+     *
+     * @return boolean
+     */
+    public function isZoomed($file = null)
+    {
+        return (boolean) $this->getTileUrl($file);
+    }
+
+    /**
+     * Determine if Omeka is ready to use an IIPImage server.
+     *
+     * @return boolean
+     */
+    protected function _useIIPImageServer()
+    {
+        static $flag = null;
+
+        if (is_null($flag)) {
+            $db = get_db();
+            $sql = "
+                SELECT elements.id
+                FROM {$db->Elements} elements
+                WHERE elements.element_set_id = ?
+                    AND elements.name = ?
+                LIMIT 1
+            ";
+            $bind = array(3, 'Tile Server URL');
+            $IIPImage = $db->fetchOne($sql, $bind);
+            $flag = (boolean) $IIPImage;
+        }
+
+        return $flag;
     }
 
     /**
@@ -338,6 +402,40 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $filename = is_string($file) ? $file : $file->filename;
         list($root, $extension) = $this->_getRootAndExtension($filename);
         return get_option('openlayerszoom_tiles_web') . DIRECTORY_SEPARATOR . $root . self::ZOOM_FOLDER_EXTENSION;
+    }
+
+    /**
+     * Passed a file name, it will initilize the zoomify and cut the tiles.
+     *
+     * @param filename of image
+     */
+    protected function _createTiles($filename)
+    {
+        include_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers'. DIRECTORY_SEPARATOR . 'ZoomifyHelper.php';
+
+        // Tiles are built in-place, in a subdir of the original image folder.
+        // TODO Add a destination path to use local server path and to avoid move.
+        $originalDir = FILES_DIR . DIRECTORY_SEPARATOR . 'original' . DIRECTORY_SEPARATOR;
+        list($root, $ext) = $this->_getRootAndExtension($filename);
+        $sourcePath = $originalDir . $root . '_zdata';
+
+        $zoomifyObject = new zoomify($originalDir);
+        $zoomifyObject->zoomifyObject($filename, $originalDir);
+
+       // Move the tiles into their storage directory.
+       if (file_exists($sourcePath)) {
+            // Check if destination folder exists, else create it.
+            $destinationPath = $this->_getZDataDir($filename);
+            if (!is_dir(dirname($destinationPath))) {
+                $result = mkdir(dirname($destinationPath), 0755, true);
+                if (!$result) {
+                    $message = __('Impossible to create destination directory: "%s" for file "%s".', $destinationPath, basename($filename));
+                    _log($message, Zend_Log::WARN);
+                    throw new Omeka_Storage_Exception($message);
+                }
+            }
+            rename($sourcePath, $destinationPath);
+        }
     }
 
     /**
@@ -389,31 +487,5 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
             }
         }
         return true;
-    }
-
-    /**
-     * Determine if Omeka is ready to use an IIPImage server.
-     *
-     * @return boolean
-     */
-    protected function _useIIPImageServer()
-    {
-        static $flag = null;
-
-        if (is_null($flag)) {
-            $db = get_db();
-            $sql = "
-                SELECT elements.id
-                FROM {$db->Elements} elements
-                WHERE elements.element_set_id = ?
-                    AND elements.name = ?
-                LIMIT 1
-            ";
-            $bind = array(3, 'Tile Server URL');
-            $IIPImage = $db->fetchOne($sql, $bind);
-            $flag = (boolean) $IIPImage;
-        }
-
-        return $flag;
     }
 }

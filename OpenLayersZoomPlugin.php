@@ -119,14 +119,18 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $post = $args['post'];
 
         // Loop through and see if there are any files to zoom.
+        // Only checked values are posted.
         $filesave = false;
+        $files = $this->_get_files($item);
         foreach ($post as $key => $value) {
-            // Value is the filename of the stored image.
-            if (strpos($key, 'open_layers_zoom_filename') !== false) {
-                $this->_createTiles($value);
+            // Key is the file id of the stored image, value is the filename.
+            if (strpos($key, 'open_layers_zoom_filename_') !== false) {
+                if (!$this->isZoomed($files[(int) substr($key, strlen('open_layers_zoom_filename_'))])) {
+                   $this->_createTiles($value);
+                }
                 $filesaved = true;
             }
-            elseif ((strpos($key, 'open_layers_zoom_removed_hidden') !== false) && ($filesaved != true)) {
+            elseif ((strpos($key, 'open_layers_zoom_removed_hidden_') !== false) && ($filesaved != true)) {
                 $this->_removeZDataDir($value);
             }
         }
@@ -209,32 +213,27 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $item = $args['item'];
 
         $useHtml = '<span>' . __('Only images files attached to the record can be zoomed.') . '</span>';
-        $counter = 0;
         $zoomList = '';
 
         foreach($item->Files as $file) {
             if (strpos($file->mime_type, 'image/') === 0) {
                 // See if this image has been zoooomed yet.
-                // Zoomed image.
-                if (file_exists($this->_getZDataDir($file))) {
-                    $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('This image is zoomed.') . '</label>';
-                    $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden' . $counter . '" id="open_layers_zoom_removed_hidden' . $counter . '" value="' . $file->filename . '"/>';
+                if ($this->isZoomed($file)) {
+                    $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename_' . $file->id . '" id="open_layers_zoom_filename_' . $file->id . '" value="' . $file->filename . '"/>' . __('This image is zoomed.') . '</label>';
+                    $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden_' . $file->id . '" id="open_layers_zoom_removed_hidden_' . $file->id . '" value="' . $file->filename . '"/>';
 
                     $title = __('Click and Save Changes to make this image un zoom-able');
                     $style_color = "color:green";
                 }
-                // Non zoomed image.
                 else {
-                    $isChecked = '<input type="checkbox" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('Zoom this image') . '</label>';
+                    $isChecked = '<input type="checkbox" name="open_layers_zoom_filename_' . $file->id . '" id="open_layers_zoom_filename_' . $file->id . '" value="' . $file->filename . '"/>' . __('Zoom this image') . '</label>';
                     $title = __('Click and Save Changes to make this image zoom-able');
                     $style_color = "color:black";
                 }
 
-                $counter++;
-
                 $useHtml .= '
                 <div style="float:left; margin:10px;">
-                    <label title="' . $title . '" style="width:auto;' . $style_color . ';" for="zoomThis' . $counter . '">'
+                    <label title="' . $title . '" style="width:auto;' . $style_color . ';" for="zoomThis_' . $file->id . '">'
                     . file_markup($file, array('imageSize'=>'thumbnail'))
                     . $isChecked . '<br />
                 </div>';
@@ -487,5 +486,23 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
             }
         }
         return true;
+    }
+
+    /**
+     * Order files attached to an item by file id.
+     *
+     * @param object $item.
+     *
+     * @return array
+     *  Array of files ordered by file id.
+     */
+    protected function _get_files($item)
+    {
+        $files = array();
+        foreach ($item->Files as $file) {
+            $files[$file->id] = $file;
+        }
+
+        return $files;
     }
 }

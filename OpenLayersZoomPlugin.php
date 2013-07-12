@@ -31,6 +31,8 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
     protected $_hooks = array(
         'install',
         'uninstall',
+        'config_form',
+        'config',
         'public_head',
         'after_save_item',
         'before_delete_file',
@@ -85,6 +87,29 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $this->_rrmdir($tilesDir);
 
         $this->_uninstallOptions();
+    }
+
+    /**
+     * Shows plugin configuration page.
+     *
+     * @return void
+     */
+    public function hookConfigForm()
+    {
+        require 'config_form.php';
+    }
+
+    /**
+     * Processes the configuration form.
+     *
+     * @return void
+     */
+    public function hookConfig($args)
+    {
+        $post = $args['post'];
+
+        set_option('openlayerszoom_tiles_dir', realpath(trim($post['openlayerszoom_tiles_dir'])));
+        set_option('openlayerszoom_tiles_web', trim($post['openlayerszoom_tiles_web']));
     }
 
     /**

@@ -48,6 +48,8 @@ by
     </div>
 ```
 
+Be careful to keep the div with id "item-images" around the call to OpenLayers, otherwise it won't work.
+
 Edit `views/shared/css/OpenLayersZoom.css` to change the size/appearance of the
 zoom viewer.
 

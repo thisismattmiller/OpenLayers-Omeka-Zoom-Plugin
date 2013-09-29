@@ -2,21 +2,18 @@
 /**
  * OpenLayers Zoom: an OpenLayers based image zoom widget.
  *
- * @see README.md
- *
  * @copyright Daniel Berthereau, 2013
  * @copyright Peter Binkley, 2012-2013
  * @copyright Matt Miller, 2012
  * @license http://www.gnu.org/licenses/gpl-3.0.txt GNU GPLv3
- * @package OpenLayersZoom
  */
 
 require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'OpenLayersZoomFunctions.php';
 
 /**
- * Contains code used to integrate the plugin into Omeka.
+ * The OpenLayers Zoom plugin.
  *
- * @package OpenLayersZoom
+ * @package Omeka\Plugins\OpenLayersZoom
  */
 class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
 {
@@ -119,8 +116,13 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
      */
     public function hookPublicHead($args)
     {
+        $view = $args['view'];
+
         $request = Zend_Controller_Front::getInstance()->getRequest();
-        if ($request->getControllerName() == 'items' && $request->getActionName() == 'show') {
+        if ($request->getControllerName() == 'items'
+                && $request->getActionName() == 'show'
+                && $this->zoomedFilesCount($view->item) > 0
+            ) {
             queue_css_file('OpenLayersZoom');
             queue_js_file(array(
                 'OpenLayers',
@@ -150,7 +152,8 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         foreach ($post as $key => $value) {
             // Key is the file id of the stored image, value is the filename.
             if (strpos($key, 'open_layers_zoom_filename_') !== false) {
-                if (!$this->isZoomed($files[(int) substr($key, strlen('open_layers_zoom_filename_'))])) {
+                $file = $files[(int) substr($key, strlen('open_layers_zoom_filename_'))];
+                if (!$this->isZoomed($file)) {
                    $this->_createTiles($value);
                 }
                 $filesaved = true;
@@ -330,7 +333,8 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         // Does it use a IIPImage server?
         if ($this->_useIIPImageServer()) {
             $item = $file->getItem();
-            $tileUrl = metadata($item, array('Item Type Metadata', 'Tile Server URL'));
+            $tileUrl = $item->getElementTexts('Item Type Metadata', 'Tile Server URL');
+            $tileUrl = empty($tileUrl) ? '' : $tileUrl[0]->text;
         }
 
         // Does it have zoom tiles?

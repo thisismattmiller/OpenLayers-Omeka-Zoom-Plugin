@@ -2,21 +2,18 @@
 /**
  * OpenLayers Zoom: an OpenLayers based image zoom widget.
  *
- * @see README.md
- *
  * @copyright Daniel Berthereau, 2013
  * @copyright Peter Binkley, 2012-2013
  * @copyright Matt Miller, 2012
  * @license http://www.gnu.org/licenses/gpl-3.0.txt GNU GPLv3
- * @package OpenLayersZoom
  */
 
 require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'helpers' . DIRECTORY_SEPARATOR . 'OpenLayersZoomFunctions.php';
 
 /**
- * Contains code used to integrate the plugin into Omeka.
+ * The OpenLayers Zoom plugin.
  *
- * @package OpenLayersZoom
+ * @package Omeka\Plugins\OpenLayersZoom
  */
 class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
 {
@@ -31,6 +28,8 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
     protected $_hooks = array(
         'install',
         'uninstall',
+        'config_form',
+        'config',
         'public_head',
         'after_save_item',
         'before_delete_file',
@@ -88,14 +87,42 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
     }
 
     /**
+     * Shows plugin configuration page.
+     *
+     * @return void
+     */
+    public function hookConfigForm()
+    {
+        require 'config_form.php';
+    }
+
+    /**
+     * Processes the configuration form.
+     *
+     * @return void
+     */
+    public function hookConfig($args)
+    {
+        $post = $args['post'];
+
+        set_option('openlayerszoom_tiles_dir', realpath(trim($post['openlayerszoom_tiles_dir'])));
+        set_option('openlayerszoom_tiles_web', trim($post['openlayerszoom_tiles_web']));
+    }
+
+    /**
      * Add css and js in the header of the public theme.
      *
      * TODO Don't add css and javascript when OpenLayersZoom is not used.
      */
     public function hookPublicHead($args)
     {
+        $view = $args['view'];
+
         $request = Zend_Controller_Front::getInstance()->getRequest();
-        if ($request->getControllerName() == 'items' && $request->getActionName() == 'show') {
+        if ($request->getControllerName() == 'items'
+                && $request->getActionName() == 'show'
+                && $this->zoomedFilesCount($view->item) > 0
+            ) {
             queue_css_file('OpenLayersZoom');
             queue_js_file(array(
                 'OpenLayers',
@@ -119,14 +146,19 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $post = $args['post'];
 
         // Loop through and see if there are any files to zoom.
+        // Only checked values are posted.
         $filesave = false;
+        $files = $this->_get_files($item);
         foreach ($post as $key => $value) {
-            // Value is the filename of the stored image.
-            if (strpos($key, 'open_layers_zoom_filename') !== false) {
-                $this->_createTiles($value);
+            // Key is the file id of the stored image, value is the filename.
+            if (strpos($key, 'open_layers_zoom_filename_') !== false) {
+                $file = $files[(int) substr($key, strlen('open_layers_zoom_filename_'))];
+                if (!$this->isZoomed($file)) {
+                   $this->_createTiles($value);
+                }
                 $filesaved = true;
             }
-            elseif ((strpos($key, 'open_layers_zoom_removed_hidden') !== false) && ($filesaved != true)) {
+            elseif ((strpos($key, 'open_layers_zoom_removed_hidden_') !== false) && ($filesaved != true)) {
                 $this->_removeZDataDir($value);
             }
         }
@@ -209,32 +241,27 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         $item = $args['item'];
 
         $useHtml = '<span>' . __('Only images files attached to the record can be zoomed.') . '</span>';
-        $counter = 0;
         $zoomList = '';
 
         foreach($item->Files as $file) {
             if (strpos($file->mime_type, 'image/') === 0) {
                 // See if this image has been zoooomed yet.
-                // Zoomed image.
-                if (file_exists($this->_getZDataDir($file))) {
-                    $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('This image is zoomed.') . '</label>';
-                    $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden' . $counter . '" id="open_layers_zoom_removed_hidden' . $counter . '" value="' . $file->filename . '"/>';
+                if ($this->isZoomed($file)) {
+                    $isChecked = '<input type="checkbox" checked="checked" name="open_layers_zoom_filename_' . $file->id . '" id="open_layers_zoom_filename_' . $file->id . '" value="' . $file->filename . '"/>' . __('This image is zoomed.') . '</label>';
+                    $isChecked .= '<input type="hidden" name="open_layers_zoom_removed_hidden_' . $file->id . '" id="open_layers_zoom_removed_hidden_' . $file->id . '" value="' . $file->filename . '"/>';
 
                     $title = __('Click and Save Changes to make this image un zoom-able');
                     $style_color = "color:green";
                 }
-                // Non zoomed image.
                 else {
-                    $isChecked = '<input type="checkbox" name="open_layers_zoom_filename' . $counter . '" id="open_layers_zoom_filename' . $counter . '" value="' . $file->filename . '"/>' . __('Zoom this image') . '</label>';
+                    $isChecked = '<input type="checkbox" name="open_layers_zoom_filename_' . $file->id . '" id="open_layers_zoom_filename_' . $file->id . '" value="' . $file->filename . '"/>' . __('Zoom this image') . '</label>';
                     $title = __('Click and Save Changes to make this image zoom-able');
                     $style_color = "color:black";
                 }
 
-                $counter++;
-
                 $useHtml .= '
                 <div style="float:left; margin:10px;">
-                    <label title="' . $title . '" style="width:auto;' . $style_color . ';" for="zoomThis' . $counter . '">'
+                    <label title="' . $title . '" style="width:auto;' . $style_color . ';" for="zoomThis_' . $file->id . '">'
                     . file_markup($file, array('imageSize'=>'thumbnail'))
                     . $isChecked . '<br />
                 </div>';
@@ -306,7 +333,8 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
         // Does it use a IIPImage server?
         if ($this->_useIIPImageServer()) {
             $item = $file->getItem();
-            $tileUrl = metadata($item, array('Item Type Metadata', 'Tile Server URL'));
+            $tileUrl = $item->getElementTexts('Item Type Metadata', 'Tile Server URL');
+            $tileUrl = empty($tileUrl) ? '' : $tileUrl[0]->text;
         }
 
         // Does it have zoom tiles?
@@ -487,5 +515,23 @@ class OpenLayersZoomPlugin extends Omeka_Plugin_AbstractPlugin
             }
         }
         return true;
+    }
+
+    /**
+     * Order files attached to an item by file id.
+     *
+     * @param object $item.
+     *
+     * @return array
+     *  Array of files ordered by file id.
+     */
+    protected function _get_files($item)
+    {
+        $files = array();
+        foreach ($item->Files as $file) {
+            $files[$file->id] = $file;
+        }
+
+        return $files;
     }
 }

@@ -55,20 +55,23 @@
     cursor: pointer;
     right: 0;
     top: 0;
+    z-index: 1001;
 }
 .olControlOverviewMapMaximizeButton {
     bottom: 80px;
     cursor: pointer;
     right: 0;
+    top: -18px;
+    left: 0;
 }
 .olControlOverviewMapExtentRectangle {
-    background-image: url("../../img/blank.gif");
+    background-image: url("../javascripts/img/blank.gif");
     border: 2px dotted red;
     cursor: move;
     overflow: hidden;
 }
 .olControlOverviewMapRectReplacement {
-    background-image: url("../../img/overview_replacement.gif");
+    background-image: url("../javascripts/img/overview_replacement.gif");
     background-position: center center;
     background-repeat: no-repeat;
     cursor: move;
@@ -86,7 +89,7 @@
     top: 71px;
 }
 .olControlZoomPanel div {
-    background-image: url("img/zoom-panel.png");
+    background-image: url("../javascripts/img/zoom-panel.png");
     cursor: pointer;
     height: 18px;
     position: absolute;
